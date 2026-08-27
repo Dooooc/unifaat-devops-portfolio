@@ -1,0 +1,81 @@
+services:
+
+  # ── API: construída a partir do Dockerfile local ──────────────────────────
+  # O build usa o Dockerfile na raiz do projeto (node:20-alpine).
+  # As variáveis de ambiente são injetadas em runtime a partir do .env.
+  # O serviço só sobe após postgres e redis estarem healthy.
+  api:
+    build: .
+    container_name: app_api
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      PORT: ${PORT}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - app_network
+
+  # ── PostgreSQL 15 ─────────────────────────────────────────────────────────
+  # Banco de dados principal da aplicação.
+  # Os dados são persistidos no volume nomeado postgres_data.
+  # O healthcheck usa pg_isready para garantir que o banco aceita conexões
+  # antes de liberar os serviços dependentes.
+  postgres:
+    image: postgres:15-alpine
+    container_name: app_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - app_network
+
+  # ── Redis 7 ───────────────────────────────────────────────────────────────
+  # Camada de cache da aplicação.
+  # O healthcheck usa redis-cli ping para confirmar que o servidor está pronto.
+  redis:
+    image: redis:7-alpine
+    container_name: app_redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - app_network
+
+# ── Volume nomeado ────────────────────────────────────────────────────────────
+# Garante persistência dos dados do PostgreSQL entre reinicializações.
+volumes:
+  postgres_data:
+    driver: local
+
+# ── Rede bridge customizada ───────────────────────────────────────────────────
+# Todos os serviços comunicam-se isoladamente nesta rede interna.
+networks:
+  app_network:
+    driver: bridge
