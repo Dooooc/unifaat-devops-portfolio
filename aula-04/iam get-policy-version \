@@ -1,0 +1,16 @@
+{
+    "AttachedPolicies": [
+        {
+            "PolicyName": "Pvoclabs1",
+            "PolicyArn": "arn:aws:iam::172424055362:policy/Pvoclabs1"
+        },
+        {
+            "PolicyName": "Pvoclabs2",
+            "PolicyArn": "arn:aws:iam::172424055362:policy/Pvoclabs2"
+        },
+        {
+            "PolicyName": "voc-cancel-cred",
+            "PolicyArn": "arn:aws:iam::172424055362:policy/voc-cancel-cred"
+        }
+    ]
+}
