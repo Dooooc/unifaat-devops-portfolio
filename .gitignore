@@ -14,3 +14,39 @@ Thumbs.db
 # Build
 dist/
 build/
+
+# ── Terraform ────────────────────────────────────────────────
+# State files — contêm dados sensíveis, nunca commitar
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Diretório de providers baixados
+.terraform/
+
+# Lock file de providers (pode ser commitado para reprodutibilidade)
+# .terraform.lock.hcl
+
+# Credenciais AWS — NUNCA commitar
+aws-creds.sh
+
+# Chaves SSH geradas pelo Terraform — NUNCA commitar
+*.pem
+*.key
+
+# Planos binários do Terraform
+*.tfplan
+
+# Variáveis sensíveis (se usar arquivo separado)
+*.tfvars.local
+secrets.tfvars
+
+# Crash log
+crash.log
+crash.*.log
+
+# Override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
