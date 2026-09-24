@@ -1,4 +1,4 @@
-# Dependências
+﻿# Dependências
 node_modules/
 
 # Variáveis de ambiente
@@ -38,6 +38,7 @@ aws-creds.sh
 *.tfplan
 
 # Variáveis sensíveis (se usar arquivo separado)
+terraform.tfvars
 *.tfvars.local
 secrets.tfvars
 
