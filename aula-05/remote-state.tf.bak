@@ -1,0 +1,115 @@
+# ============================================================
+# REMOTE STATE BOOTSTRAP — S3 + DynamoDB
+#
+# IMPORTANTE: este arquivo provisiona a infraestrutura do
+# remote state (bucket + tabela). Deve ser aplicado ANTES
+# de habilitar o backend "s3" em providers.tf.
+#
+# Fluxo correto:
+#   1. Comente o bloco "backend s3" em providers.tf
+#   2. terraform init && terraform apply (cria bucket + tabela)
+#   3. Descomente o bloco "backend s3" em providers.tf
+#   4. terraform init -migrate-state (migra state local → S3)
+#   5. terraform apply (aplica o restante da infra)
+# ============================================================
+
+# ── Bucket S3 para armazenar o state ─────────────────────────
+
+resource "aws_s3_bucket" "tfstate" {
+  bucket = var.state_bucket_name
+
+  # force_destroy = true permite destruir mesmo com objetos dentro
+  # útil para o lab — não usar em produção
+  force_destroy = true
+
+  tags = {
+    Name    = var.state_bucket_name
+    Purpose = "Terraform Remote State"
+    Project = "TechNova"
+    Aula    = "05"
+  }
+}
+
+# Versionamento — obrigatório para auditoria e rollback de state
+resource "aws_s3_bucket_versioning" "tfstate" {
+  bucket = aws_s3_bucket.tfstate.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+# Criptografia server-side (SSE-S3)
+resource "aws_s3_bucket_server_side_encryption_configuration" "tfstate" {
+  bucket = aws_s3_bucket.tfstate.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+    bucket_key_enabled = true
+  }
+}
+
+# Block Public Access — todos os 4 blocos habilitados
+resource "aws_s3_bucket_public_access_block" "tfstate" {
+  bucket = aws_s3_bucket.tfstate.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# Política de bucket que impede acesso não criptografado
+resource "aws_s3_bucket_policy" "tfstate" {
+  bucket = aws_s3_bucket.tfstate.id
+
+  # Depende do block public access ser aplicado primeiro
+  depends_on = [aws_s3_bucket_public_access_block.tfstate]
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "DenyNonSSLRequests"
+        Effect    = "Deny"
+        Principal = "*"
+        Action    = "s3:*"
+        Resource = [
+          aws_s3_bucket.tfstate.arn,
+          "${aws_s3_bucket.tfstate.arn}/*",
+        ]
+        Condition = {
+          Bool = {
+            "aws:SecureTransport" = "false"
+          }
+        }
+      }
+    ]
+  })
+}
+
+# ── Tabela DynamoDB para locking do state ────────────────────
+# Partition key DEVE ser "LockID" (String) — exigência do Terraform
+
+resource "aws_dynamodb_table" "tfstate_lock" {
+  name         = var.state_dynamodb_table
+  billing_mode = "PAY_PER_REQUEST" # sem custo fixo — ideal para lab
+  hash_key     = "LockID"
+
+  attribute {
+    name = "LockID"
+    type = "S"
+  }
+
+  # Proteção contra delete acidental desabilitada no lab
+  deletion_protection_enabled = false
+
+  tags = {
+    Name    = var.state_dynamodb_table
+    Purpose = "Terraform State Locking"
+    Project = "TechNova"
+    Aula    = "05"
+  }
+}
