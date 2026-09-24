@@ -1,0 +1,4 @@
+aws-creds.sh
+terraform.tfstate
+terraform.tfstate.*
+.terraform/
