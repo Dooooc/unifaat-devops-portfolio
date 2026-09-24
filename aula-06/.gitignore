@@ -1,0 +1,33 @@
+﻿# Terraform State
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Providers baixados
+.terraform/
+.terraform.lock.hcl
+
+# Variaveis sensiveis (contem senhas)
+terraform.tfvars
+*.tfvars.local
+secrets.tfvars
+
+# Credenciais AWS
+aws-creds.sh
+
+# Chaves SSH
+*.pem
+*.key
+
+# Planos binarios
+*.tfplan
+
+# Crash logs
+crash.log
+crash.*.log
+
+# Override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
